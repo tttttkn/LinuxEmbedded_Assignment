@@ -1,19 +1,8 @@
-/*BT3. Tín hiệu Process
-- Mô tả: Viết một chương trình tạo hai process cha - con. Tiến trình cha sẽ gửi tín hiệu SIGUSR1 tới tiến trình con 
-sau một khoảng thời gian.
-- Yêu cầu:
-Sử dụng signal() để định nghĩa hành vi của tiến trình con khi nhận tín hiệu SIGUSR1.
-In ra một thông báo khi tiến trình con nhận được tín hiệu.
-
-*/
-
-
 #include <unistd.h>
 #include <stdio.h>
 #include <sys/wait.h>
 #include <stdlib.h>
 #include <signal.h>
-
 
 void signalHandler(int sig)
 {
@@ -26,7 +15,7 @@ void waitHandler(int sig)
     wait(NULL);
 }
 
-int main(int argc , char *argv[])
+int main(int argc, char *argv[])
 {
     pid_t pid;
     pid = fork();
@@ -34,7 +23,8 @@ int main(int argc , char *argv[])
     if (pid == 0)
     {
         signal(SIGUSR1, signalHandler);
-        while(1);
+        while (1)
+            ;
     }
     else if (pid > 0)
     {
@@ -47,7 +37,6 @@ int main(int argc , char *argv[])
     {
         printf("Error\n");
     }
-    
-    return 0;
 
+    return 0;
 }
