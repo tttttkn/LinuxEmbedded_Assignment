@@ -1,19 +1,5 @@
 #include "client.h"
 
-static void thread_serv_handler(void *arg)
-{
-    pthread_detach(pthread_self());
-    connection_data_t serv_data = *((connection_data_t *)arg);
-
-    pthread_mutex_lock(&mutex);
-    add_connection_data(&serv_data);
-    // Notify that a new connection has been added
-    pthread_cond_signal(&cond);
-    pthread_mutex_unlock(&mutex);
-
-    receiving_message(&serv_data);
-}
-
 void connect_to_server(char ip[], in_port_t port)
 {
     if (is_valid_server(ip, port) == -1)
@@ -28,15 +14,15 @@ void connect_to_server(char ip[], in_port_t port)
     bzero(&servaddr, sizeof(servaddr));
     bzero(&serv_data, sizeof(serv_data));
 
-    // Store the server connection information
-    strcpy(serv_data.ip_address, inet_ntoa(servaddr.sin_addr));
-    serv_data.sockfd = create_socket();
-    serv_data.port = port;
-
     // Set the server connection information
     servaddr.sin_family = AF_INET;
     servaddr.sin_addr.s_addr = inet_addr(ip);
     servaddr.sin_port = htons(port);
+
+    // Store the server connection information
+    serv_data.sockfd = create_socket();
+    strcpy(serv_data.ip_address, inet_ntoa(servaddr.sin_addr));
+    serv_data.port = port;
 
     if (connect_to_socket(serv_data.sockfd, &servaddr) == -1)
     {
@@ -58,6 +44,20 @@ void connect_to_server(char ip[], in_port_t port)
     pthread_mutex_lock(&mutex);
     pthread_cond_wait(&cond, &mutex);
     pthread_mutex_unlock(&mutex);
+}
+
+void thread_serv_handler(void *arg)
+{
+    pthread_detach(pthread_self());
+    connection_data_t serv_data = *((connection_data_t *)arg);
+
+    pthread_mutex_lock(&mutex);
+    add_connection_data(&serv_data);
+    // Notify that a new connection has been added
+    pthread_cond_signal(&cond);
+    pthread_mutex_unlock(&mutex);
+
+    receiving_message(&serv_data);
 }
 
 int is_valid_server(char ip[], in_port_t port)
