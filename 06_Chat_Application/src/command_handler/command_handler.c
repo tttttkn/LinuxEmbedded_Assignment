@@ -2,11 +2,13 @@
 
 #include "command_handler.h"
 
-void *command_handler()
+pthread_t command_handler_thread = 0;
+
+void command_handler()
 {
     char command_input[MAX_INPUT_SIZE];
 
-    while (1)
+    while (is_server_listening)
     {
         bzero(command_input, MAX_INPUT_SIZE);
         get_input_from_user(command_input);
@@ -25,19 +27,39 @@ void command_parser(char *command_input)
 {
     char *command = strtok(command_input, " ");
 
+    if (command == NULL)
+    {
+        printf("\nInvalid command\n");
+        return;
+    }
+
     if (strcmp(command, "connect") == 0)
     {
         char *ip_address = strtok(NULL, " ");
         char *port = strtok(NULL, "");
 
-        connect_to_server(ip_address, atoi(port));
+        if (ip_address && port)
+        {
+            connect_to_server(ip_address, atoi(port));
+        }
+        else
+        {
+            printf("\nInvalid command\n");
+        }
     }
     else if (strcmp(command, "send") == 0)
     {
         char *conn_id_str = strtok(NULL, " ");
         char *msg = strtok(NULL, "");
 
-        send_message(atoi(conn_id_str), msg);
+        if (conn_id_str && msg)
+        {
+            send_message(atoi(conn_id_str), msg);
+        }
+        else
+        {
+            printf("\nInvalid command\n");
+        }
     }
     else if (strcmp(command, "list") == 0 && strtok(NULL, " ") == NULL)
     {
@@ -45,7 +67,7 @@ void command_parser(char *command_input)
     }
     else if (strcmp(command, "help") == 0 && strtok(NULL, " ") == NULL)
     {
-        print_help(SERV_PORT);
+        print_help();
     }
     else if (strcmp(command, "myip") == 0 && strtok(NULL, " ") == NULL)
     {
@@ -53,12 +75,12 @@ void command_parser(char *command_input)
     }
     else if (strcmp(command, "myport") == 0 && strtok(NULL, " ") == NULL)
     {
-        print_server_port();
+        print_app_port();
     }
     else if (strcmp(command, "terminate") == 0)
     {
         char *conn_id_str = strtok(NULL, " ");
-        if (strtok(NULL, " ") == NULL)
+        if (conn_id_str && strtok(NULL, " ") == NULL)
         {
             terminate_connection(atoi(conn_id_str));
         }
@@ -69,8 +91,8 @@ void command_parser(char *command_input)
     }
     else if (strcmp(command, "exit") == 0 && strtok(NULL, " ") == NULL)
     {
-        terminate_all_connections();
-        exit(0);
+        close_server();
+        printf("\nApplication is exiting\n");
     }
     else
     {

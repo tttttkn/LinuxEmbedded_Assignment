@@ -1,5 +1,19 @@
 #include "client.h"
 
+static void thread_serv_handler(void *arg)
+{
+    pthread_detach(pthread_self());
+    connection_data_t serv_data = *((connection_data_t *)arg);
+
+    pthread_mutex_lock(&mutex);
+    add_connection_data(&serv_data);
+    // Notify that a new connection has been added
+    pthread_cond_signal(&cond);
+    pthread_mutex_unlock(&mutex);
+
+    receiving_message(&serv_data);
+}
+
 void connect_to_server(char ip[], in_port_t port)
 {
     if (is_valid_server(ip, port) == -1)
@@ -7,48 +21,43 @@ void connect_to_server(char ip[], in_port_t port)
         return;
     }
 
-    int sockfd;
     struct sockaddr_in servaddr;
+    connection_data_t serv_data;
 
-    sockfd = create_socket();
+    // Initialize servaddr and serv_data
     bzero(&servaddr, sizeof(servaddr));
+    bzero(&serv_data, sizeof(serv_data));
 
+    // Store the server connection information
+    strcpy(serv_data.ip_address, inet_ntoa(servaddr.sin_addr));
+    serv_data.sockfd = create_socket();
+    serv_data.port = port;
+
+    // Set the server connection information
     servaddr.sin_family = AF_INET;
     servaddr.sin_addr.s_addr = inet_addr(ip);
     servaddr.sin_port = htons(port);
 
-    if (connect_to_socket(sockfd, &servaddr) == -1)
+    if (connect_to_socket(serv_data.sockfd, &servaddr) == -1)
     {
         return;
     }
 
-    connection_data_t serv_data;
-    strcpy(serv_data.ip_address, inet_ntoa(servaddr.sin_addr));
-    serv_data.sockfd = sockfd;
-    serv_data.port = port;
+    // Get the port number of application
+    char port_str[6];
+    bzero(port_str, sizeof(port_str));
+    snprintf(port_str, sizeof(port_str), "%d", APP_PORT);
 
+    // Send the application port number to the server
+    write(serv_data.sockfd, port_str, sizeof(port_str));
+
+    // Create a thread to handle the server connection
     pthread_create(&serv_data.thread_id, NULL, (void *)&thread_serv_handler, (void *)&serv_data);
 
     // Wait for the thread to be added to the connection list
     pthread_mutex_lock(&mutex);
     pthread_cond_wait(&cond, &mutex);
     pthread_mutex_unlock(&mutex);
-}
-
-void thread_serv_handler(void *arg)
-{
-    pthread_detach(pthread_self());
-    connection_data_t serv_data = *((connection_data_t *)arg);
-
-    pthread_mutex_lock(&mutex);
-
-    add_connection_data(serv_data.ip_address, serv_data.port, serv_data.sockfd, pthread_self());
-
-    // Notify that a new connection has been added
-    pthread_cond_signal(&cond);
-    pthread_mutex_unlock(&mutex);
-
-    receiving_message(&serv_data);
 }
 
 int is_valid_server(char ip[], in_port_t port)
@@ -64,8 +73,8 @@ int is_valid_server(char ip[], in_port_t port)
     char local_ip_address[INET_ADDRSTRLEN];
     get_local_ip_address(local_ip_address, INET_ADDRSTRLEN);
 
-    // Check if the client is trying to connect to itself
-    if (strcmp(ip, local_ip_address) == 0 && port == SERV_PORT)
+    // Check if the application is trying to connect to itself
+    if (strcmp(ip, local_ip_address) == 0 && port == APP_PORT)
     {
         printf("\nCannot connect to yourself.\n");
         return -1;

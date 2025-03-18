@@ -15,10 +15,12 @@
 
 void get_input_from_user(char *buff);
 
-void *command_handler();
+void command_handler();
 
 void command_parser(char *command_input);
 
 void print_help();
+
+extern pthread_t command_handler_thread;
 
 #endif

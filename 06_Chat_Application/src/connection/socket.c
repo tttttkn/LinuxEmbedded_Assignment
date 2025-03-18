@@ -9,36 +9,35 @@ int create_socket()
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd == -1)
     {
-        printf("\nSocket creation failed...\n");
-        exit(EXIT_FAILURE);
+        perror("\nSocket creation failed");
     }
-    else
-    {
-        return sockfd;
-    }
+    return sockfd;
 }
 
-void listening_socket(int sockfd, struct sockaddr_in *servaddr, uint16_t max_clients)
+int listening_socket(int sockfd, struct sockaddr_in *servaddr, uint16_t max_clients)
 {
 
     if ((bind(sockfd, (SA *)servaddr, sizeof(*servaddr))) != 0)
     {
-        printf("\nSocket bind failed...\n");
-        exit(EXIT_FAILURE);
+        perror("\nbind failed");
+        return -1;
     }
 
     if ((listen(sockfd, max_clients)) != 0)
     {
-        printf("\nListen failed...\n");
-        exit(EXIT_FAILURE);
+        perror("\nlisten failed");
+        return -1;
     }
+
+    return 0;
 }
 
 int connect_to_socket(int sockfd, struct sockaddr_in *servaddr)
 {
     if (connect(sockfd, (SA *)servaddr, sizeof(*servaddr)) != 0)
     {
-        printf("\nConnection to %s failed...\n", inet_ntoa(servaddr->sin_addr));
+        // perror("\nConnection to %s failed...\n", inet_ntoa(servaddr->sin_addr));
+        perror("\nConnection to server failed");
         printf("Please check the IP address and port number\n");
         return -1;
     }
@@ -56,7 +55,7 @@ void get_local_ip_address(char *buffer, size_t buflen)
 
     if (getifaddrs(&ifaddr) == -1)
     {
-        printf("\ngetifaddrs failed\n");
+        perror("\ngetifaddrs failed\n");
         return;
     }
 
