@@ -1,0 +1,13 @@
+#ifndef TCPCONFIG_HPP
+#define TCPCONFIG_HPP
+
+#define TCP_MAX_CLIENTS 10
+
+
+#define TCP_SUCCESS 0
+#define TCP_CREATE_FAILED 1
+#define TCP_BIND_FAILED 2
+#define TCP_LISTEN_FAILED 3
+
+
+#endif
