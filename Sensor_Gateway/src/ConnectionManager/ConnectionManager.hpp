@@ -1,27 +1,38 @@
 #ifndef CONNECTION_MANAGER_HPP
 #define CONNECTION_MANAGER_HPP
 
+#include <thread>
 #include <memory>
+#include <sys/epoll.h>
 
-#include "../Socket.hpp"
+#include "../Socket/TCPSocket.hpp"
 
+#define MAX_EVENTS 10
 
 class ConnectionManager
 {
-    public:
-        void init();
+public:
+    // Constructor and Destructor
+    ConnectionManager() = default;
+    explicit ConnectionManager(ISocket &socketDomain);
+    ~ConnectionManager() = default;
 
+    void init(ISocket *socketDomain, int port);
+    void onListeningToSensorNode();
+    void onStart();
+    void addSensorNode(int connfd);
+    void removeSensorNode(int connfd);
+    void handleSensorNodeData();
+    void handleSensorNodeDisconnection(int connfd);
+    void handleSensorNodeError(int connfd);
 
-    private:
-        struct sockaddr_in _seraddr{};
-
-
-
-
-
+private:
+    struct sockaddr_in _servaddr{0};
+    int _port{0};
+    ISocket *_iSocket{nullptr};
+    int epfd{0};
 };
 
 extern std::unique_ptr<ConnectionManager> connMgr;
 
-
-#endif 
+#endif
