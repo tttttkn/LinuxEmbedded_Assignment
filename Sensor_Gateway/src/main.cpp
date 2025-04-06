@@ -6,6 +6,7 @@
 #include <thread>
 
 #include "ConnectionManager/ConnectionManager.hpp"
+#include "DataManager/DataManager.hpp"
 #include "Log/EventLogger.hpp"
 
 int main(int argc, char *argv[])
@@ -24,21 +25,26 @@ int main(int argc, char *argv[])
 
     int port = atoi(argv[1]);
 
+    // EventLogger eventLogger(FIFO_FILE);
     pid_t pid = fork();
 
     switch (pid)
     {
     case 0: // Child process
     {
-        // EventLogger eventLogger("gateway.log");
         break;
     }
     case -1: // Fork failed
         break;
     default:
     {
-        std::thread connMgrThread(&ConnectionManager::onListeningToSensorNode, &connMgr);
+        TCPSocket tcpSocket;
+        connMgr.init(&tcpSocket, port);
+        dataMgr.init();
 
+        std::thread connMgrThread(&ConnectionManager::onStart, &connMgr);
+        std::thread dataMgrThread(&DataManager::processSensorData, &dataMgr);
+        connMgrThread.join();
         break;
     }
     }

@@ -1,6 +1,6 @@
 #include "TCPSocket.hpp"
 
-ISocket::SocketStatus TCPSocket::socketOpen(struct sockaddr_in *servaddr, int port) 
+ISocket::SocketStatus TCPSocket::socketOpen(struct sockaddr_in *servaddr, int port)
 {
     SocketStatus status{SOCKET_SUCCESS};
 
@@ -12,11 +12,10 @@ ISocket::SocketStatus TCPSocket::socketOpen(struct sockaddr_in *servaddr, int po
 
     // Initialize socket structure
     servaddr->sin_family = AF_INET;
-    servaddr->sin_addr.s_addr = INADDR_ANY;
+    servaddr->sin_addr.s_addr = htonl(INADDR_ANY);
     servaddr->sin_port = htons(port);
 
-
-    if ((bind(_sockfd, (SA *)servaddr, sizeof(servaddr))) != 0)
+    if ((bind(_sockfd, (SA *)servaddr, sizeof(*servaddr))) != 0)
     {
         status = SOCKET_BIND_FAILED;
     }
@@ -30,17 +29,17 @@ ISocket::SocketStatus TCPSocket::socketOpen(struct sockaddr_in *servaddr, int po
     return status;
 }
 
-int TCPSocket::sendData(int sockfd, const char *buffer, int length) 
+int TCPSocket::sendData(int sockfd, const void *buffer, int length)
 {
-    return read(sockfd, buffer, length, 0);
+    return write(sockfd, buffer, length);
 }
 
-int TCPSocket::receiveData(int sockfd, char *buffer, int length) 
+int TCPSocket::receiveData(int sockfd, void *buffer, int length)
 {
-    return recv(sockfd, buffer, length, 0);
+    return read(sockfd, buffer, length);
 }
 
-int TCPSocket::onAcceptClient(struct sockaddr_in *cliaddr, socklen_t *len) 
+int TCPSocket::onAcceptClient(struct sockaddr_in *cliaddr, socklen_t *len)
 {
     return accept(_sockfd, (SA *)cliaddr, len);
 }

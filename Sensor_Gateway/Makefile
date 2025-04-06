@@ -3,12 +3,19 @@ CFLAGS = -Wall
 SRC_DIR = src
 BIN_DIR = bin
 
-SRCS = $(wildcard $(SRC_DIR)/**/*.cpp $(SRC_DIR)/*.cpp)
-TARGET = $(BIN_DIR)/chat_app
+GATEWAY_SRCS = $(filter-out $(SRC_DIR)/SensorSimulate/%, $(wildcard $(SRC_DIR)/**/*.cpp $(SRC_DIR)/*.cpp))
+SENSOR_SRCS = $(wildcard $(SRC_DIR)/SensorSimulate/*.cpp)
+GATEWAY_TARGET = $(BIN_DIR)/SensorGateway
+SENSOR_TARGET = $(BIN_DIR)/SensorSimulate
 
-all: $(TARGET)
 
-$(TARGET): $(SRCS)
+all: $(GATEWAY_TARGET) $(SENSOR_TARGET)
+
+$(GATEWAY_TARGET): $(GATEWAY_SRCS)
+	@mkdir -p $(BIN_DIR)
+	$(CC) $(CFLAGS) -o $@ $^
+
+$(SENSOR_TARGET): $(SENSOR_SRCS)
 	@mkdir -p $(BIN_DIR)
 	$(CC) $(CFLAGS) -o $@ $^
 

@@ -1,15 +1,19 @@
 #include "ConnectionManager.hpp"
 
-ConnectionManager::ConnectionManager(ISocket &socketDomain) : _iSocket{&socketDomain}
-{
-}
+// ConnectionManager::ConnectionManager(ISocket &socketDomain) : _iSocket{&socketDomain}
+// {
+// }
 
 void ConnectionManager::init(ISocket *socketDomain, int port)
 {
     if (_iSocket == nullptr)
     {
         _iSocket = socketDomain;
-        _iSocket->socketOpen(&_servaddr, port);
+        if (_iSocket->socketOpen(&_servaddr, port) != ISocket::SOCKET_SUCCESS)
+        {
+            // Handle error
+            return;
+        }
     }
     _port = port;
 
@@ -23,6 +27,7 @@ void ConnectionManager::init(ISocket *socketDomain, int port)
 
 void ConnectionManager::onListeningToSensorNode()
 {
+
     int connfd;
     socklen_t len = sizeof(_servaddr);
     struct sockaddr_in cliaddr{0};
@@ -36,6 +41,7 @@ void ConnectionManager::onListeningToSensorNode()
             // Handle error
             continue;
         }
+        printf("Waiting for sensor data4...\n");
         addSensorNode(connfd);
     }
 }
@@ -54,13 +60,16 @@ void ConnectionManager::addSensorNode(int connfd)
     }
 }
 
-void ConnectionManager::handleSensorNodeData()
+void ConnectionManager::onReceivingSensorData()
 {
     // Start the epoll loop
     while (true)
     {
+        printf("Waiting for sensor data...\n");
         struct epoll_event events[MAX_EVENTS];
         int nfds = epoll_wait(epfd, events, MAX_EVENTS, -1);
+        printf("Waiting for sensor data1...\n");
+
         if (nfds == -1)
         {
             // Handle error
@@ -71,12 +80,21 @@ void ConnectionManager::handleSensorNodeData()
         {
             if (events[i].events & EPOLLIN)
             {
+                printf("Waiting for sensor data2...\n");
+
                 // Handle incoming data
-                char buffer[1024];
-                int bytesRead = _iSocket->receiveData(events[i].data.fd, buffer, sizeof(buffer));
-                if (bytesRead > 0)
+                SensorData data;
+                if (_iSocket->receiveData(events[i].data.fd, &data, sizeof(data)) > 0)
                 {
+                    printf("Waiting for sensor data3...\n");
+
                     // Process the received data
+                    sensorDataQueue.push(data);
+                }
+                else
+                {
+                    // Handle disconnection or error
+                    // handleSensorNodeDisconnection(events[i].data.fd);
                 }
             }
         }
@@ -86,9 +104,9 @@ void ConnectionManager::handleSensorNodeData()
 void ConnectionManager::onStart()
 {
     // Create a thread to listen for incoming connections
-    std::thread listenThread([this]()
-                             { this->onListeningToSensorNode(); });
-    listenThread.detach();
+    std::thread connMgrThread(&ConnectionManager::onListeningToSensorNode, this);
+
+    this->onReceivingSensorData();
 }
 
 ConnectionManager connMgr;

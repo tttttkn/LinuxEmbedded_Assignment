@@ -5,6 +5,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
+#define FIFO_FILE "gateway.log"
+
 class EventLogger
 {
 public:
