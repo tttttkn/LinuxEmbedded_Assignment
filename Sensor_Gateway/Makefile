@@ -1,5 +1,6 @@
 CC = g++
 CFLAGS = -Wall
+LDFLAGS = -lsqlite3
 SRC_DIR = src
 BIN_DIR = bin
 
@@ -8,16 +9,15 @@ SENSOR_SRCS = $(wildcard $(SRC_DIR)/SensorSimulate/*.cpp)
 GATEWAY_TARGET = $(BIN_DIR)/SensorGateway
 SENSOR_TARGET = $(BIN_DIR)/SensorSimulate
 
-
 all: $(GATEWAY_TARGET) $(SENSOR_TARGET)
 
 $(GATEWAY_TARGET): $(GATEWAY_SRCS)
 	@mkdir -p $(BIN_DIR)
-	$(CC) $(CFLAGS) -o $@ $^
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 $(SENSOR_TARGET): $(SENSOR_SRCS)
 	@mkdir -p $(BIN_DIR)
-	$(CC) $(CFLAGS) -o $@ $^
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 clean:
 	rm -rf $(BIN_DIR) valgrind-out.txt

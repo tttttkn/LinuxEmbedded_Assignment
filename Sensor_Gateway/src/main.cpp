@@ -8,6 +8,7 @@
 #include "ConnectionManager/ConnectionManager.hpp"
 #include "DataManager/DataManager.hpp"
 #include "Log/EventLogger.hpp"
+#include "StorageManager/StorageManager.hpp"
 
 int main(int argc, char *argv[])
 {
@@ -25,26 +26,34 @@ int main(int argc, char *argv[])
 
     int port = atoi(argv[1]);
 
-    // EventLogger eventLogger(FIFO_FILE);
+    eventLogger.init(FIFO_FILE);
+
     pid_t pid = fork();
 
     switch (pid)
     {
     case 0: // Child process
     {
+        eventLogger.openFIFO(O_RDONLY);
+        eventLogger.onStart();
         break;
     }
     case -1: // Fork failed
         break;
     default:
     {
+        eventLogger.openFIFO(O_WRONLY);
         TCPSocket tcpSocket;
         connMgr.init(&tcpSocket, port);
         dataMgr.init();
+        storageMgr.init();
 
         std::thread connMgrThread(&ConnectionManager::onStart, &connMgr);
         std::thread dataMgrThread(&DataManager::processSensorData, &dataMgr);
+        std::thread storageMgrThread(&StorageManager::storeSensorData, &storageMgr);
         connMgrThread.join();
+        dataMgrThread.join();
+        storageMgrThread.join();
         break;
     }
     }

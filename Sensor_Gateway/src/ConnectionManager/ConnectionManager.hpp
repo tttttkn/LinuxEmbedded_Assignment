@@ -7,6 +7,8 @@
 
 #include "../Socket/TCPSocket.hpp"
 #include "../SharedData/SharedData.hpp"
+#include "../Log/EventLogger.hpp"
+#include "iostream"
 
 #define MAX_EVENTS 10
 

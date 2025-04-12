@@ -1,6 +1,7 @@
 #ifndef SHARED_DATA_HPP
 #define SHARED_DATA_HPP
 #include <queue>
+#include <mutex>
 
 typedef struct
 {
@@ -11,5 +12,9 @@ typedef struct
 } SensorData;
 
 extern std::queue<SensorData> sensorDataQueue;
+
+extern pthread_cond_t sharedDataCond;
+
+extern pthread_mutex_t sharedDataMutex;
 
 #endif // SHARED_DATA_HPP

@@ -5,7 +5,7 @@
 #include <arpa/inet.h>
 #include "../SharedData/SharedData.hpp"
 
-#define SERVER_PORT 5000
+#define SERVER_PORT 8000
 #define BUFFER_SIZE 1024
 
 int main()
@@ -37,13 +37,18 @@ int main()
 
     while (1)
     {
-        sleep(5000);
+        sleep(10);
         // Send a message to the server
         SensorData sensorData;
         sensorData.sensorId = 4000;
-        sensorData.sensorTemp = 25;
-        sensorData.timestamp = 1625256000; // Example timestamp
-        write(sockfd, &sensorData, sizeof(sensorData));
+        sensorData.sensorTemp = rand() % 51; // Generate a random number between 0 and 50
+        sensorData.timestamp = 1625256000;   // Example timestamp
+        if (write(sockfd, &sensorData, sizeof(sensorData)) == -1)
+        {
+            perror("Failed to send data");
+            break;
+        }
+        printf("Sensor data sent: ID=%d, Temp=%d, Timestamp=%d\n", sensorData.sensorId, sensorData.sensorTemp, sensorData.timestamp);
     }
 
     // Close the socket

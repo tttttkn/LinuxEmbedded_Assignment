@@ -31,11 +31,11 @@ void DataManager::collectSensorID()
         {
             sensorId = std::stoi(tokens[0]);
             room = std::stoi(tokens[1]);
-            printf("Sensor ID: %d, Room: %d\n", sensorId, room);
+            // printf("Sensor ID: %d, Room: %d\n", sensorId, room);
             sensorMap[sensorId] = room;
         }
     }
-    printf("Total number of sensors: %zu\n", sensorMap.size());
+    // printf("Total number of sensors: %zu\n", sensorMap.size());
     file.close();
 }
 
@@ -43,7 +43,9 @@ void DataManager::processSensorData()
 {
     while (true)
     {
-        while (!sensorDataQueue.empty())
+        // Lock the mutex before accessing the shared data
+        pthread_mutex_lock(&sharedDataMutex);
+        if (!sensorDataQueue.empty())
         {
             SensorData data = sensorDataQueue.front();
             for (const auto &sensor : sensorMap)
@@ -54,18 +56,21 @@ void DataManager::processSensorData()
                     if (sensorIDMap[data.sensorId].recentTemps.size() == 5)
                     {
                         sensorIDMap[data.sensorId].avgTemp = avgTempOld + (data.sensorTemp - sensorIDMap[data.sensorId].recentTemps.back()) / 5;
+                        sensorIDMap[data.sensorId].recentTemps.pop();
                     }
                     else
                     {
                         sensorIDMap[data.sensorId].avgTemp = (avgTempOld * sensorIDMap[data.sensorId].recentTemps.size() + data.sensorTemp) / (sensorIDMap[data.sensorId].recentTemps.size() + 1);
                     }
                     sensorIDMap[data.sensorId].recentTemps.push(data.sensorTemp);
-                    sensorIDMap[data.sensorId].recentTemps.pop();
 
-                    printf("Sensor ID: %d, Room: %d, Temperature: %d, Average Temperature: %.2f\n", data.sensorId, sensor.second, data.sensorTemp, sensorIDMap[data.sensorId].avgTemp);
+                    // printf("Sensor ID: %d, Room: %d, Temperature: %d, Average Temperature: %.2f\n", data.sensorId, sensor.second, data.sensorTemp, sensorIDMap[data.sensorId].avgTemp);
                 }
             }
+            // Signal the condition variable to notify the StorageManager thread
+            pthread_cond_signal(&sharedDataCond);
         }
+        pthread_mutex_unlock(&sharedDataMutex);
     }
 }
 

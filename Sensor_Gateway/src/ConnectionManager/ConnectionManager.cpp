@@ -41,7 +41,6 @@ void ConnectionManager::onListeningToSensorNode()
             // Handle error
             continue;
         }
-        printf("Waiting for sensor data4...\n");
         addSensorNode(connfd);
     }
 }
@@ -58,6 +57,8 @@ void ConnectionManager::addSensorNode(int connfd)
         // Handle error
         return;
     }
+    // Log the new connection
+    // eventLogger.logEvent("A sensor node with"+ std::to_string()+ has opened a new connection1, EventLogger::CONNECTION_MANAGER);
 }
 
 void ConnectionManager::onReceivingSensorData()
@@ -65,10 +66,8 @@ void ConnectionManager::onReceivingSensorData()
     // Start the epoll loop
     while (true)
     {
-        printf("Waiting for sensor data...\n");
         struct epoll_event events[MAX_EVENTS];
         int nfds = epoll_wait(epfd, events, MAX_EVENTS, -1);
-        printf("Waiting for sensor data1...\n");
 
         if (nfds == -1)
         {
@@ -80,16 +79,18 @@ void ConnectionManager::onReceivingSensorData()
         {
             if (events[i].events & EPOLLIN)
             {
-                printf("Waiting for sensor data2...\n");
 
                 // Handle incoming data
                 SensorData data;
                 if (_iSocket->receiveData(events[i].data.fd, &data, sizeof(data)) > 0)
                 {
-                    printf("Waiting for sensor data3...\n");
-
+                    pthread_mutex_lock(&sharedDataMutex);
                     // Process the received data
                     sensorDataQueue.push(data);
+
+                    
+
+                    pthread_mutex_unlock(&sharedDataMutex);
                 }
                 else
                 {
