@@ -6,6 +6,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <mutex>
 
 #define FIFO_FILE "/tmp/logFifo"
 
@@ -37,6 +38,7 @@ private:
     int fifoFd;
     int fd;
     unsigned int logCount = 0;
+    pthread_mutex_t eventLoggerMutex = PTHREAD_MUTEX_INITIALIZER;
 };
 
 extern EventLogger eventLogger;

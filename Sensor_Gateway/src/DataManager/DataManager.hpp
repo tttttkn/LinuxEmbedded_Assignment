@@ -4,14 +4,17 @@
 #include <map>
 #include <vector>
 #include <queue>
+#include <signal.h>
+
 #include "../SharedData/SharedData.hpp"
+#include "../ConnectionManager/ConnectionManager.hpp"
 
 #define SENSOR_CONFIG_FILE "/home/tantaikieu/Work/LinuxEmbedded_Assignment/Sensor_Gateway/SensorConfig.csv"
 typedef struct
 {
     std::queue<int> recentTemps;
     float avgTemp;
-    bool status;
+    int observeRoom;
 } SensorInfo;
 
 class DataManager
@@ -21,14 +24,14 @@ public:
     DataManager() = default;
     ~DataManager() = default;
 
-    static bool isSensorIDValid(int sensorId);
+    bool isSensorIDValid(int sensorId);
     void init();
     void collectSensorID();
     void processSensorData();
+    void calculateAvgTemp(int sensorId, int sensorTemp);
 
 private:
-    std::map<int, int> sensorMap;          // Map to store sensor IDs and their corresponding room numbers
-    std::map<int, SensorInfo> sensorIDMap; // Map to store sensor information
+    std::map<int, SensorInfo> sensorIdToSensorInfo; // Map to store sensor information
 };
 
 extern DataManager dataMgr;

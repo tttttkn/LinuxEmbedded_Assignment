@@ -4,6 +4,7 @@
 #include <sqlite3.h>
 #include <iostream>
 #include "../SharedData/SharedData.hpp"
+#include "../Log/EventLogger.hpp"
 
 class StorageManager
 {

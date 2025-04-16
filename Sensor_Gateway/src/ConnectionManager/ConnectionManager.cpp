@@ -20,7 +20,7 @@ void ConnectionManager::init(ISocket *socketDomain, int port)
     epfd = epoll_create1(EPOLL_CLOEXEC);
     if (epfd == -1)
     {
-        // Handle error
+        eventLogger.logEvent("Failed to create epoll instance", EventLogger::CONNECTION_MANAGER);
         return;
     }
 }
@@ -81,21 +81,28 @@ void ConnectionManager::onReceivingSensorData()
             {
 
                 // Handle incoming data
+                printf("Sensor node %d is sending data...\n", events[i].data.fd);
                 SensorData data;
                 if (_iSocket->receiveData(events[i].data.fd, &data, sizeof(data)) > 0)
                 {
+                    if (_connfdToSensorID.find(events[i].data.fd) == _connfdToSensorID.end())
+                    {
+                        // Associate connfd with sensorID
+                        _connfdToSensorID[events[i].data.fd] = data.sensorId;
+                        std::string logMessage = "A sensor node with " + std::to_string(data.sensorId) + " has opened a new connection";
+                        eventLogger.logEvent(logMessage, EventLogger::CONNECTION_MANAGER);
+                        logMessage.clear();
+                    }
                     pthread_mutex_lock(&sharedDataMutex);
                     // Process the received data
                     sensorDataQueue.push(data);
-
-                    
 
                     pthread_mutex_unlock(&sharedDataMutex);
                 }
                 else
                 {
                     // Handle disconnection or error
-                    // handleSensorNodeDisconnection(events[i].data.fd);
+                    handleSensorNodeDisconnection(events[i].data.fd);
                 }
             }
         }
@@ -108,6 +115,23 @@ void ConnectionManager::onStart()
     std::thread connMgrThread(&ConnectionManager::onListeningToSensorNode, this);
 
     this->onReceivingSensorData();
+}
+
+void ConnectionManager::handleSensorNodeDisconnection(int connfd)
+{
+    // Remove the file descriptor from the epoll instance
+    if (epoll_ctl(epfd, EPOLL_CTL_DEL, connfd, nullptr) == -1)
+    {
+        // Handle error
+    }
+    close(connfd);
+
+    // Log the disconnection
+    std::string logMessage = "A sensor node with " + std::to_string(_connfdToSensorID[connfd]) + " has closed the connection";
+    eventLogger.logEvent(logMessage, EventLogger::CONNECTION_MANAGER);
+    logMessage.clear();
+
+    _connfdToSensorID.erase(connfd); // Remove the connection from the map
 }
 
 ConnectionManager connMgr;

@@ -15,16 +15,17 @@ void StorageManager::connectDB()
         fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
         return;
     }
+
+    std::string logMessage = "Connection to SQL server established";
+    eventLogger.logEvent(logMessage, EventLogger::STORAGE_MANAGER);
+    logMessage.clear();
 }
 
 void StorageManager::createTable()
 {
-    char *sql;
+    const char *sql;
 
-    sql = "CREATE TABLE IF NOT EXISTS SensorData ("
-          "SensorID INT NOT NULL,"
-          "SensorTemp INT NOT NULL,"
-          "Timestamp INT NOT NULL);";
+    sql = "CREATE TABLE IF NOT EXISTS SensorData (SensorID INT NOT NULL, SensorTemp INT NOT NULL, Timestamp INT NOT NULL);";
 
     int rc = sqlite3_exec(db, sql, nullptr, 0, nullptr);
     if (rc != SQLITE_OK)
@@ -33,7 +34,9 @@ void StorageManager::createTable()
     }
     else
     {
-        // fprintf(stdout, "Table created successfully\n");
+        std::string logMessage = "New table SensorData created.";
+        eventLogger.logEvent(logMessage, EventLogger::STORAGE_MANAGER);
+        logMessage.clear();
     }
 }
 
@@ -45,7 +48,7 @@ void StorageManager::storeSensorData()
         pthread_mutex_lock(&sharedDataMutex);
 
         // Wait for the condition variable to be signaled
-        // printf("Waiting for sensor data22...\n");
+        printf("Waiting for sensor data...\n");
         pthread_cond_wait(&sharedDataCond, &sharedDataMutex);
         // printf("Sensor data received...\n");
         if (!sensorDataQueue.empty())
@@ -55,16 +58,20 @@ void StorageManager::storeSensorData()
             SensorData data = sensorDataQueue.front();
             storeProcess(data);
 
+            printf("sensorDataQueue size1: %d\n", sensorDataQueue.size());
             sensorDataQueue.pop();
-            // printf("Data stored in the database...\n");
+            printf("sensorDataQueue size2: %d\n", sensorDataQueue.size());
+
+            printf("Data stored in the database...\n");
         }
         pthread_mutex_unlock(&sharedDataMutex);
+        printf("Unlock mutex1...\n");
     }
 }
 
 void StorageManager::storeProcess(SensorData data)
 {
-    char *sql;
+    const char *sql;
     sqlite3_stmt *stmt;
 
     sql = "INSERT INTO SensorData (SensorID, SensorTemp, Timestamp) VALUES (?, ?, ?);";
@@ -87,7 +94,11 @@ void StorageManager::storeProcess(SensorData data)
     }
     else
     {
-        // fprintf(stdout, "Data stored successfully\n");
+        std::string logMessage = "Sensor data stored in the database: SensorID = " + std::to_string(data.sensorId) +
+                                 ", SensorTemp = " + std::to_string(data.sensorTemp) +
+                                 ", Timestamp = " + std::to_string(data.timestamp);
+        eventLogger.logEvent(logMessage, EventLogger::STORAGE_MANAGER);
+        logMessage.clear();
     }
 
     sqlite3_finalize(stmt);

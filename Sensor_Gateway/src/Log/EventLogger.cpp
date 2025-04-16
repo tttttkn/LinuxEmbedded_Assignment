@@ -36,6 +36,8 @@ EventLogger::~EventLogger()
 
 void EventLogger::logEvent(const std::string &eventMessage, LogSource source)
 {
+    pthread_mutex_lock(&eventLoggerMutex);
+
     std::string sourceStr;
     switch (source)
     {
@@ -57,12 +59,14 @@ void EventLogger::logEvent(const std::string &eventMessage, LogSource source)
     }
 
     logCount++;
-    std::string logMessage = "[" + std::to_string(logCount) + "] " + "[" + sourceStr + "]: " + eventMessage + "\n";
+    std::string logMessage{};
+    logMessage = "[" + std::to_string(logCount) + "] " + "[" + sourceStr + "]: " + eventMessage + "\n";
+    int len = logMessage.length();
 
     // Write the log message to the FIFO
     if (fifoFd != -1)
     {
-        ssize_t bytesWritten = write(fifoFd, logMessage.c_str(), logMessage.size());
+        ssize_t bytesWritten = write(fifoFd, logMessage.c_str(), len);
         if (bytesWritten == -1)
         {
             perror("Error writing to FIFO");
@@ -72,6 +76,7 @@ void EventLogger::logEvent(const std::string &eventMessage, LogSource source)
     {
         std::cerr << "FIFO file is not open for writing." << std::endl;
     }
+    pthread_mutex_unlock(&eventLoggerMutex);
 }
 
 void EventLogger::closeFifo()
@@ -84,22 +89,11 @@ void EventLogger::onStart()
     while (1)
     {
         // Wait for a new log message
-        char logMessage[1024];
-        logMessage[0] = '\0'; // Initialize the buffer
-        // std::cout << "Waiting for log message..." << std::endl;
-        read(fifoFd, &logMessage, sizeof(logMessage));
-        
-        if (logMessage[0] == '\0')
-        {
-            std::cerr << "Received empty log message" << std::endl;
-            continue;
-        }
-        // else
-        // {
-        //     std::cout << "Log message received: " << logMessage << std::endl;
-        // }
+        char logMessage[1024] = {0};
 
-        logMessage[sizeof(logMessage) - 1] = '\0';
+        int bytesRead = read(fifoFd, &logMessage, sizeof(logMessage));
+
+        logMessage[bytesRead] = '\0';
 
         // Write the log message to the file
         ssize_t bytesWritten = write(fd, logMessage, strlen(logMessage));
@@ -107,10 +101,6 @@ void EventLogger::onStart()
         {
             perror("Error writing to log file");
         }
-        // else
-        // {
-        //     std::cout << "Log message written to file: " << logMessage;
-        // }
     }
 }
 

@@ -31,11 +31,16 @@ void DataManager::collectSensorID()
         {
             sensorId = std::stoi(tokens[0]);
             room = std::stoi(tokens[1]);
-            // printf("Sensor ID: %d, Room: %d\n", sensorId, room);
-            sensorMap[sensorId] = room;
+
+            SensorInfo sensorInfo;
+            sensorInfo.observeRoom = room;
+            sensorInfo.avgTemp = 0.0f;
+            sensorInfo.recentTemps = std::queue<int>();
+
+            sensorIdToSensorInfo[sensorId] = sensorInfo;
         }
     }
-    // printf("Total number of sensors: %zu\n", sensorMap.size());
+
     file.close();
 }
 
@@ -43,35 +48,60 @@ void DataManager::processSensorData()
 {
     while (true)
     {
-        // Lock the mutex before accessing the shared data
         pthread_mutex_lock(&sharedDataMutex);
+        // Wait until there is data in the queue
         if (!sensorDataQueue.empty())
         {
+            printf("sensorDataQueue size: %d\n", sensorDataQueue.size());
+            // Fetch and process the data
             SensorData data = sensorDataQueue.front();
-            for (const auto &sensor : sensorMap)
+            if (isSensorIDValid(data.sensorId))
             {
-                if (sensor.first == data.sensorId)
-                {
-                    float avgTempOld = sensorIDMap[data.sensorId].avgTemp;
-                    if (sensorIDMap[data.sensorId].recentTemps.size() == 5)
-                    {
-                        sensorIDMap[data.sensorId].avgTemp = avgTempOld + (data.sensorTemp - sensorIDMap[data.sensorId].recentTemps.back()) / 5;
-                        sensorIDMap[data.sensorId].recentTemps.pop();
-                    }
-                    else
-                    {
-                        sensorIDMap[data.sensorId].avgTemp = (avgTempOld * sensorIDMap[data.sensorId].recentTemps.size() + data.sensorTemp) / (sensorIDMap[data.sensorId].recentTemps.size() + 1);
-                    }
-                    sensorIDMap[data.sensorId].recentTemps.push(data.sensorTemp);
+                calculateAvgTemp(data.sensorId, data.sensorTemp);
 
-                    // printf("Sensor ID: %d, Room: %d, Temperature: %d, Average Temperature: %.2f\n", data.sensorId, sensor.second, data.sensorTemp, sensorIDMap[data.sensorId].avgTemp);
-                }
+                // Signal the condition variable to notify StorageManager
+                pthread_cond_signal(&sharedDataCond);
+                sleep(3);
             }
-            // Signal the condition variable to notify the StorageManager thread
-            pthread_cond_signal(&sharedDataCond);
         }
         pthread_mutex_unlock(&sharedDataMutex);
     }
 }
 
+bool DataManager::isSensorIDValid(int sensorId)
+{
+    return sensorIdToSensorInfo.find(sensorId) != sensorIdToSensorInfo.end();
+}
+
+void DataManager::calculateAvgTemp(int sensorId, int sensorTemp)
+{
+
+    float avgTempOld = sensorIdToSensorInfo[sensorId].avgTemp;
+    if (sensorIdToSensorInfo[sensorId].recentTemps.size() == 5)
+    {
+        sensorIdToSensorInfo[sensorId].avgTemp = avgTempOld + (sensorTemp - sensorIdToSensorInfo[sensorId].recentTemps.back()) / 5;
+        sensorIdToSensorInfo[sensorId].recentTemps.pop();
+    }
+    else
+    {
+        sensorIdToSensorInfo[sensorId].avgTemp = (avgTempOld * sensorIdToSensorInfo[sensorId].recentTemps.size() + sensorTemp) / (sensorIdToSensorInfo[sensorId].recentTemps.size() + 1);
+    }
+    sensorIdToSensorInfo[sensorId].recentTemps.push(sensorTemp);
+
+    printf("Sensor ID: %d, Temperature: %d, Average Temperature: %.2f\n", sensorId, sensorTemp, sensorIdToSensorInfo[sensorId].avgTemp);
+
+    std::string logMessage;
+    if (sensorIdToSensorInfo[sensorId].avgTemp > 30)
+    {
+        logMessage = "The sensor node with " + std::to_string(sensorId) + " reports it's too hot (running avg temperature = " + std::to_string(sensorIdToSensorInfo[sensorId].avgTemp) + ")";
+        eventLogger.logEvent(logMessage, EventLogger::DATA_MANAGER);
+        logMessage.clear();
+    }
+    else if (sensorIdToSensorInfo[sensorId].avgTemp < 10)
+    {
+        logMessage = "The sensor node with " + std::to_string(sensorId) + " reports it's too cold (running avg temperature = " + std::to_string(sensorIdToSensorInfo[sensorId].avgTemp) + ")";
+        eventLogger.logEvent(logMessage, EventLogger::DATA_MANAGER);
+        logMessage.clear();
+    }
+}
 DataManager dataMgr;
